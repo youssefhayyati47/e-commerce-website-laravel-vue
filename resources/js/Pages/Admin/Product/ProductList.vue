@@ -1,18 +1,19 @@
 <script setup>
-import { Link, router, usePage } from "@inertiajs/vue3";
+import { router, usePage } from "@inertiajs/vue3";
 import { ElNotification } from "element-plus";
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { Plus } from "@element-plus/icons-vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 const page = usePage();
-const products = page.props.products;
+// const products = page.props.products;
+defineProps({ products: Array });
 const brands = page.props.brands;
 const categories = page.props.categories;
 
-const isAddProduct = ref(false);
-const isEditProduct = ref(false);
 const dialogVisibleAdd = ref(false);
 const dialogVisibleEdit = ref(false);
+const temporaryImages = ref([]);
 
 //product form data
 const form = {
@@ -28,18 +29,32 @@ const form = {
     inStock: ref(false),
 };
 
+////////////////////////////ELEMENT PLUS START////////////////////////////
 //upload multiple images
 const dialogImageUrl = ref("");
 const dialogVisible2 = ref(false);
 
 const handleFileChange = (file) => {
-    form.product_images.value.push(file);
+    temporaryImages.value.push(file);
+    form.product_images.push(file);
 };
-const handleRemove = (file) => {
-    // const index = form.product_images.value.indexOf(file);
-    // const newFileList = form.product_images.value.slice();
-    // newFileList.splice(index, 1);
-    // form.product_images.value = newFileList;
+
+const handleRemove = async (file) => {
+    console.log(file.id);
+    await router.delete(`products/images/destroy/${file.id}`, {
+        onSuccess: () => {
+            ElNotification({
+                title: page.props.flash.success,
+                type: "success",
+            });
+        },
+        onError: () => {
+            ElNotification({
+                title: page.props.flash.error,
+                type: "error",
+            });
+        },
+    });
 };
 
 const handlePictureCardPreview = (file) => {
@@ -47,14 +62,10 @@ const handlePictureCardPreview = (file) => {
     dialogVisible2.value = true;
 };
 
-//open add modal
-const openAddModal = () => {
-    resetForm();
-    isAddProduct.value = true;
-    dialogVisibleAdd.value = true;
-    dialogVisibleEdit.value = false;
-};
+////////////////////////////ELEMENT PLUS END////////////////////////////
 
+////////////////////////////CRUD METHODS START////////////////////////////
+//reset form
 const resetForm = () => {
     form.id.value = null;
     form.title.value = null;
@@ -65,6 +76,13 @@ const resetForm = () => {
     form.published.value = false;
     form.category_id.value = "";
     form.brand_id.value = "";
+};
+
+//open add modal
+const openAddModal = () => {
+    resetForm();
+    dialogVisibleAdd.value = true;
+    dialogVisibleEdit.value = false;
 };
 
 //add product method
@@ -89,27 +107,20 @@ const addProduct = async () => {
                     title: page.props.flash.success,
                     type: "success",
                 });
-
                 router.get("products");
-                dialogVisible.value = false;
+                dialogVisibleAdd.value = false;
             },
         });
     } catch (error) {
         console.log(error);
     }
-    // ElNotification({
-    //     title: "Product Added Successfully",
-    //     type: "success",
-    // });
 };
 
 //open edit modal
 const openEditModal = (product) => {
     resetForm();
-    isEditProduct.value = true;
     dialogVisibleEdit.value = true;
     dialogVisibleAdd.value = false;
-    isAddProduct.value = false;
 
     form.id.value = product.id;
     form.title.value = product.title;
@@ -118,8 +129,88 @@ const openEditModal = (product) => {
     form.description.value = product.description;
     form.category_id.value = product.category_id;
     form.brand_id.value = product.brand_id;
-    form.product_images.value = product.product_images;
+    form.product_images.value = product.product_images.map((image) => {
+        return {
+            id: image.id,
+            name: image.image.split("/").pop(),
+            url: "http://127.0.0.1:8000/" + image.image,
+        };
+    });
 };
+
+//update product
+const updateProduct = async () => {
+    console.log("clicked");
+    const formDataEdit = new FormData();
+    // formDataEdit.append("id", form.id.value);
+    formDataEdit.append("title", form.title.value);
+    formDataEdit.append("price", form.price.value);
+    formDataEdit.append("quantity", form.quantity.value);
+    formDataEdit.append("description", form.description.value);
+    formDataEdit.append("category_id", form.category_id.value);
+    formDataEdit.append("brand_id", form.brand_id.value);
+    formDataEdit.append("_method", "PUT");
+
+    //append images
+    for (const image of temporaryImages.value) {
+        formDataEdit.append("product_images[]", image.raw);
+    }
+
+    try {
+        await router.post("products/update/" + form.id.value, formDataEdit, {
+            onSuccess: () => {
+                ElNotification({
+                    title: page.props.flash.success,
+                    type: "success",
+                });
+
+                dialogVisibleEdit.value = false;
+            },
+        });
+    } catch (error) {
+        console.log(error);
+    }
+};
+
+//delete product
+const deleteProduct = (id) => {
+    console.log("clicked");
+    ElMessageBox.confirm("Are you sure you want to delete this product?", {
+        distinguishCancelAndClose: true,
+        confirmButtonText: "Yes, Delete",
+        confirmButtonClass: "el-button--danger",
+        cancelButtonText: "Cancel",
+        type: "warning",
+        draggable: true,
+    })
+        .then(async () => {
+            console.log("entered here");
+            await router.delete("products/destroy/" + id, {
+                onSuccess: () => {
+                    ElNotification({
+                        title: page.props.flash.success,
+                        type: "success",
+                    });
+                },
+                onError: () => {
+                    ElNotification({
+                        title: page.props.flash.error,
+                        type: "error",
+                    });
+                },
+            });
+        })
+        .catch(() => {
+            ElMessage({
+                type: "info",
+                message: "Delete canceled",
+            });
+        });
+};
+
+//////////////////////////////CRUD METHODS END////////////////////////////
+
+////////////////////////////SCREEN REACTIVITY START////////////////////////////
 
 // Reactive screen size state
 const smallScreen = reactive({
@@ -146,6 +237,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
     window.removeEventListener("resize", checkScreenWidth);
 });
+
+////////////////////////////SCREEN REACTIVITY END////////////////////////////
 </script>
 
 <template>
@@ -486,28 +579,63 @@ onBeforeUnmount(() => {
                                         >
                                             <li>
                                                 <a
-                                                    href="#"
-                                                    class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                                                    >Show</a
-                                                >
-                                            </li>
-                                            <li>
-                                                <a
                                                     @click="
                                                         openEditModal(product)
                                                     "
-                                                    class="block py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                                                    class="py-2 px-4 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white flex gap-2 items-center"
                                                 >
-                                                    Edit
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="2"
+                                                        stroke="#5850EC"
+                                                        class="w-[12px] h-[15px]"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
+                                                        />
+                                                    </svg>
+
+                                                    <p class="text-indigo-600">
+                                                        Edit
+                                                    </p>
                                                 </a>
                                             </li>
                                         </ul>
                                         <div class="py-1">
-                                            <a
-                                                href="#"
-                                                class="block py-2 px-4 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white"
-                                                >Delete</a
-                                            >
+                                            <a href="">
+                                                <el-button
+                                                    plain
+                                                    @click.prevent="
+                                                        deleteProduct(
+                                                            product.id
+                                                        )
+                                                    "
+                                                    href="#"
+                                                    class="custom-button"
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke-width="1.5"
+                                                        stroke="#F05252"
+                                                        class="w-[12px] h-[15px]"
+                                                    >
+                                                        <path
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                                                        />
+                                                    </svg>
+                                                    <p class="text-red-500">
+                                                        Delete
+                                                    </p></el-button
+                                                >
+                                            </a>
                                         </div>
                                     </div>
                                 </td>
@@ -746,7 +874,6 @@ onBeforeUnmount(() => {
                                 v-model:file-list="form.product_images.value"
                                 list-type="picture-card"
                                 :on-preview="handlePictureCardPreview"
-                                :on-remove="handleRemove"
                                 :on-change="handleFileChange"
                                 multiple
                             >
@@ -770,7 +897,7 @@ onBeforeUnmount(() => {
         <!-- form ends -->
         <template #footer>
             <div class="dialog-footer">
-                <el-button @click="dialogVisible = false">Cancel</el-button>
+                <el-button @click="dialogVisibleAdd = false">Cancel</el-button>
                 <el-button
                     color="#1A56DB"
                     type="primary"
@@ -900,6 +1027,7 @@ onBeforeUnmount(() => {
                             >
                             </textarea>
                         </div>
+
                         <!-- multiple images upload -->
                         <div class="sm:col-span-2">
                             <label
@@ -912,6 +1040,7 @@ onBeforeUnmount(() => {
                                 list-type="picture-card"
                                 :on-preview="handlePictureCardPreview"
                                 :on-remove="handleRemove"
+                                :on-change="handleFileChange"
                                 multiple
                             >
                                 <el-icon>
@@ -927,22 +1056,6 @@ onBeforeUnmount(() => {
                             </el-dialog>
                         </div>
                         <!-- multiple images upload ends -->
-
-                        <div
-                            v-for="pimage in form.product_images.value"
-                            :key="pimage"
-                            class="relative"
-                        >
-                            <!-- {{ pimage }} -->
-                            <!-- <img
-                                class="w-20 h-20 rounded"
-                                :src="`/public/${pimage.image}`"
-                                alt=""
-                            />
-                            <span
-                                class="absolute top-0 left-8 transform -translate-y-1/2 w-3.5 h-3.5 bg-red-400 border-2 border-white dark:border-gray-800 rounded-full"
-                            ></span> -->
-                        </div>
                     </div>
                 </form>
             </div>
@@ -951,11 +1064,11 @@ onBeforeUnmount(() => {
         <!-- form ends -->
         <template #footer>
             <div class="dialog-footer">
-                <el-button @click="dialogVisible = false">Cancel</el-button>
+                <el-button @click="dialogVisibleEdit = false">Cancel</el-button>
                 <el-button
                     color="#1A56DB"
                     type="primary"
-                    @click="addProduct"
+                    @click="updateProduct"
                     :disabled="form.processing"
                 >
                     Confirm
@@ -964,8 +1077,39 @@ onBeforeUnmount(() => {
         </template>
     </el-dialog>
 </template>
+
 <style>
 .el-dialog {
     margin-top: 5vh !important;
+}
+</style>
+
+<style scoped>
+.custom-button {
+    display: flex !important;
+    gap: 10px !important;
+    align-items: center !important;
+    justify-content: start !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    color: #4a5568 !important; /* text-gray-700 */
+    background-color: transparent !important;
+    border: none !important;
+    width: 100% !important;
+}
+
+.custom-button:hover {
+    background-color: #f7fafc !important; /* hover:bg-gray-100 */
+    color: #1a202c !important; /* dark:text-gray-200 */
+}
+
+.custom-button svg {
+    width: 12px !important;
+    height: 15px !important;
+    margin-right: 8px !important;
+}
+
+.custom-button p {
+    color: #f05252 !important; /* text-red-500 */
 }
 </style>
