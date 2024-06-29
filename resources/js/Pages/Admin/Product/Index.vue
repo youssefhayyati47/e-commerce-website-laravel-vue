@@ -1,6 +1,6 @@
 <template>
     <AdminLayout>
-        <ProductList></ProductList>
+        <ProductList :products="products"></ProductList>
     </AdminLayout>
 </template>
 
@@ -8,12 +8,9 @@
 import AdminLayout from "@/Pages/Admin/Components/AdminLayout.vue";
 import ProductList from "@/Pages/Admin/Product/ProductList.vue";
 
-// defineProps({
-//     products: {
-//         type: Object,
-//         required: true,
-//     },
-// });
+defineProps({
+    products: Array,
+});
 </script>
 
 <style></style>
