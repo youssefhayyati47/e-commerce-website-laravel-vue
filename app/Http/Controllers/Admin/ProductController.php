@@ -25,7 +25,6 @@ class ProductController extends Controller
 
     public function store(ProductRequest $request)
     {
-        info($request->validated());
         $product = Product::create($request->validated());
 
         //if images exist

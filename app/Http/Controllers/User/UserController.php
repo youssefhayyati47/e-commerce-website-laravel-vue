@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $products = Product::with('category', 'brand', 'product_images')->limit(8)->get();
+        $products = Product::with('category', 'brand', 'product_images')->limit(10)->get();
         return Inertia::render('User/Index', [
             'canLogin' => app('router')->has('login'),
             'canRegister' => app('router')->has('register'),
