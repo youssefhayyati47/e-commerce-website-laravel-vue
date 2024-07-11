@@ -15,10 +15,6 @@ onMounted(() => {
     <Header />
     <!-- navbar ends -->
 
-    <!-- hero starts -->
-    <Hero />
-    <!-- hero ends -->
-
     <!-- main starts -->
     <slot />
     <!-- main ends -->

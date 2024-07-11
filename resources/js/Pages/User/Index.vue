@@ -2,6 +2,7 @@
 import UserLayout from "@/Pages/User/Layouts/UserLayouts.vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { ElNotification } from "element-plus";
+import Hero from "./Layouts/Hero.vue";
 
 defineProps({
     products: Array,
@@ -24,6 +25,9 @@ const addToCart = async (product) => {
 
 <template>
     <UserLayout>
+        <!-- hero starts -->
+        <Hero />
+        <!-- hero ends -->
         <div class="bg-white">
             <div
                 class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8"
