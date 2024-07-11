@@ -1,9 +1,11 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
+import { computed } from "vue";
 
 const canLogin = usePage().props.canLogin;
 const canRegister = usePage().props.canRegister;
 const auth = usePage().props.auth;
+const cart = computed(() => usePage().props.cart);
 </script>
 
 <template>
@@ -15,7 +17,7 @@ const auth = usePage().props.auth;
                 :href="route('user.home')"
                 class="flex items-center space-x-3 rtl:space-x-reverse"
             >
-                <img src="logo.png" class="h-12" alt="Logo" />
+                <img src="/logo.png" class="h-12" alt="Logo" />
                 <span
                     class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white"
                     >YMarket</span
@@ -25,19 +27,20 @@ const auth = usePage().props.auth;
                 v-if="canLogin || canRegister"
                 class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse"
             >
-                <div>
-                    <button
+                <div class="flex items-center justify-center">
+                    <Link
+                        :href="route('cart.view')"
                         type="button"
                         class="mr-4 relative inline-flex items-center p-1 text-sm font-medium text-center text-white bg-blue-600 rounded-lg hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700"
                     >
-                        <span class="sr-only">Notifications</span>
+                        <span class="sr-only">Cart items</span>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke-width="1.5"
                             stroke="currentColor"
-                            class="size-6"
+                            class="size-7"
                         >
                             <path
                                 stroke-linecap="round"
@@ -48,9 +51,9 @@ const auth = usePage().props.auth;
                         <div
                             class="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 border-2 border-white rounded-full -top-2 -end-2 dark:border-gray-900"
                         >
-                            20
+                            {{ cart.count }}
                         </div>
-                    </button>
+                    </Link>
                     <button
                         v-if="auth.user"
                         type="button"
@@ -66,7 +69,7 @@ const auth = usePage().props.auth;
                             viewBox="0 0 24 24"
                             stroke-width="1.5"
                             stroke="currentColor"
-                            class="size-6 rounded-full"
+                            class="size-7"
                         >
                             <path
                                 stroke-linecap="round"
@@ -76,38 +79,42 @@ const auth = usePage().props.auth;
                         </svg>
                         <span class="sr-only">Open user menu</span>
                     </button>
+                    <div
+                        v-else
+                        class="hidden lg:flex items-center justify-center"
+                    >
+                        <Link
+                            :href="route('login')"
+                            type="button"
+                            class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2"
+                        >
+                            Login
+                        </Link>
+                        <Link
+                            :href="route('register')"
+                            v-if="canRegister"
+                            type="button"
+                            class="py-2.5 px-5 me-2 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                        >
+                            Register
+                        </Link>
+                    </div>
                 </div>
 
-                <div v-if="!auth.user">
-                    <Link
-                        :href="route('login')"
-                        type="button"
-                        class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
-                    >
-                        Login
-                    </Link>
-                    <Link
-                        :href="route('register')"
-                        v-if="canRegister"
-                        type="button"
-                        class="py-2.5 px-5 me-2 mb-2 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
-                    >
-                        Register
-                    </Link>
-                </div>
                 <!-- Dropdown menu -->
                 <div
                     class="z-50 hidden my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-gray-700 dark:divide-gray-600"
                     id="user-dropdown"
+                    v-if="auth.user"
                 >
                     <div class="px-4 py-3">
                         <span
                             class="block text-sm text-gray-900 dark:text-white"
-                            >Bonnie Green</span
+                            >{{ auth.user.name }}</span
                         >
                         <span
                             class="block text-sm text-gray-500 truncate dark:text-gray-400"
-                            >name@flowbite.com</span
+                            >{{ auth.user.email }}</span
                         >
                     </div>
                     <ul class="py-2" aria-labelledby="user-menu-button">
@@ -133,10 +140,11 @@ const auth = usePage().props.auth;
                             >
                         </li>
                         <li>
-                            <a
-                                href="#"
+                            <Link
+                                :href="route('logout')"
+                                method="post"
                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200 dark:hover:text-white"
-                                >Sign out</a
+                                >Sign out</Link
                             >
                         </li>
                     </ul>
@@ -208,6 +216,23 @@ const auth = usePage().props.auth;
                             class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent dark:border-gray-700"
                             >Contact</a
                         >
+                    </li>
+                    <li class="flex md:hidden lg:hidden">
+                        <Link
+                            :href="route('login')"
+                            type="button"
+                            class="text-white bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-blue-300 dark:focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2"
+                        >
+                            Login
+                        </Link>
+                        <Link
+                            :href="route('register')"
+                            v-if="canRegister"
+                            type="button"
+                            class="py-2.5 px-5 me-2 mb-2 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700"
+                        >
+                            Register
+                        </Link>
                     </li>
                 </ul>
             </div>

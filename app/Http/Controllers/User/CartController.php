@@ -4,17 +4,44 @@ namespace App\Http\Controllers\User;
 
 use App\Helper\Cart;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CartResource;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\UserAdress;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class CartController extends Controller
 {
 
-    public function index()
+    public function view(Request $request)
     {
-        return Inertia::render('User/Cart');
+        $user = $request->user();
+        if ($user) {
+            $cartItems = CartItem::where('user_id', $user->id)->get();
+            $userAddress = UserAdress::where('user_id', $user->id)->first();
+
+            if ($cartItems->count() <= 0) {
+                return Inertia::render('User/CartList', [
+                    'cartItems' => $cartItems,
+                    'userAddress' => $userAddress
+                ]);
+            } else {
+                $cartItems = Cart::getCookieCartItems();
+
+                if (count($cartItems) <= 0) {
+
+                    $cartItems = new CartResource(Cart::getProductsAndCartItems());
+
+                    return Inertia::render('User/CartList', [
+                        'cartItems' => $cartItems,
+                    ]);
+                } else {
+                    return back()->with('info', 'Cart is empty');
+                }
+            }
+        }
+        return Inertia::render('User/CartList');
     }
 
     public function store(Request $request, Product $product)
@@ -27,7 +54,7 @@ class CartController extends Controller
             $cartItem = CartItem::where(['user_id' => $user->id, 'product_id' => $product->id])->first();
 
             if ($cartItem) {
-                $cartItem->increament('quantity');
+                $cartItem->increment('quantity');
             } else {
                 CartItem::create([
                     'user_id' => $user->id,
@@ -37,10 +64,10 @@ class CartController extends Controller
             }
         } else {
             $cartItems = Cart::getCookieCartItems();
-            info($cartItems);
             $isProductExist = false;
             foreach ($cartItems as $key => $cartItem) {
                 if ($cartItem['product_id'] == $product->id) {
+                    info($cartItem);
                     $cartItems[$key]['quantity'] += $quantity;
                     $isProductExist = true;
                     break;
@@ -68,6 +95,9 @@ class CartController extends Controller
 
         if ($user) {
             $cartItem = CartItem::where(['user_id' => $user->id, 'product_id' => $product->id])->first();
+            if ($cartItem) {
+                $cartItem->update(['quantity' => $quantity]);
+            }
         } else {
             $cartItems = Cart::getCookieCartItems();
             foreach ($cartItems as $key => $cartItem) {
@@ -86,6 +116,7 @@ class CartController extends Controller
     public function destroy(Request $request, Product $product)
     {
         $user = $request->user();
+        info($product);
         if ($user) {
             CartItem::query()->where(['user_id' => $user->id, 'product_id' => $product->id])->first()?->delete();
             if (CartItem::count() <= 0) {
